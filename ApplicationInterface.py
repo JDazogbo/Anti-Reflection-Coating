@@ -13,6 +13,31 @@ def prompt(inputMessage:str, errorMessage:str, valType):
         except ValueError as e:
             print(errorMessage)
 
+def reflecticityWavelengthCalculator(wavelengths, centerWaveLength, indexOfRefractions):
+    reflectivities = []
+    for wavelength in wavelengths:
+        layers = []
+        for i in range(0, len(indexOfRefractions)):
+            if i == 0:
+                layers.append(Layer(indexOfRefractions[i], centerWaveLength, None))
+                layers[i].setPropagationWavelength(wavelength*math.pow(10, -9))
+            else:
+                layers.append(Layer(indexOfRefractions[i], centerWaveLength, layers[i-1]))
+                layers[i].computeBoundaryMatrix()
+                layers[i].computePropagationMatrix()
+        liste = []
+        for i in range(1, len(layers)-1):
+            liste.append(layers[i].getBoundaryMatrix())
+            liste.append(layers[i].getPropagationMatrix())
+        liste.append(layers[len(layers)-1].getBoundaryMatrix())
+        T = reduce(np.dot, liste)
+        
+        reflectionCoefficient = T[1, 0] / T[0, 0]
+
+        reflectivity = math.pow(np.abs(reflectionCoefficient), 2)
+        
+        reflectivities.append(reflectivity*100)
+    return reflectivities
 
 
 if __name__ =="__main__":
@@ -31,29 +56,8 @@ if __name__ =="__main__":
                 higherWavelength = prompt("Input the higher bound wave length in nanometers", "Value is not a float", float)*math.pow(10, -9)
 
                 wavelengths = range(int(lowerWavelength*math.pow(10, 9)), int(higherWavelength*math.pow(10, 9)), 1)
-                reflectivities = []
-                for wavelength in wavelengths:
-                    layers = []
-                    for i in range(0, layerNumber):
-                        if i == 0:
-                            layers.append(Layer(indexOfRefractions[i], centerWaveLength, None))
-                            layers[i].setPropagationWavelength(wavelength*math.pow(10, -9))
-                        else:
-                            layers.append(Layer(indexOfRefractions[i], centerWaveLength, layers[i-1]))
-                            layers[i].computeBoundaryMatrix()
-                            layers[i].computePropagationMatrix()
-                    liste = []
-                    for i in range(1, len(layers)-1):
-                        liste.append(layers[i].getBoundaryMatrix())
-                        liste.append(layers[i].getPropagationMatrix())
-                    liste.append(layers[len(layers)-1].getBoundaryMatrix())
-                    T = reduce(np.dot, liste)
-                    
-                    reflectionCoefficient = T[1, 0] / T[0, 0]
+                reflectivities = reflecticityWavelengthCalculator(wavelengths, centerWaveLength, indexOfRefractions)
 
-                    reflectivity = math.pow(np.abs(reflectionCoefficient), 2)
-                    
-                    reflectivities.append(reflectivity*100)
                 plt.plot(wavelengths, reflectivities)
                 plt.title("Reflecticity as a function of Wavelength")
                 plt.xlabel("Wavelenegth (in nanometers)")

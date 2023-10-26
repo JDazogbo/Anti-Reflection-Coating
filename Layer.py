@@ -1,4 +1,5 @@
 import numpy as np
+from functools import reduce
 from scipy.constants import pi, c, mu_0, epsilon_0
 import math
 
@@ -7,22 +8,32 @@ class Layer:
     Assumptions:
     - All of the Layers of the anti-reflection band are lossless, non-magnetic materials, so the permeability is set to mu_0.
     - When referring to "Field," it is always the Electric field and not the Magnetic field.
+    - The Width of a Layer is 1/4 the length of the wavelength propagating through the medium
     '''
 
-    def __init__(self):
-        self.__permittivity = None
+    def __init__(self, indexOfRefraction:float=None, centerWaveLength:float=None, previousLayer=None):
         self.__permeability = mu_0
         self.__propagationWavelength = None
-        self.__indexOfRefraction = None
-        self.__intrinsicImpedance = None
-        self.__thickness = None
-        self.__reflectionCoefficient = None
-        self.__transmissionCoefficient = None
-        self.__incidentField = None
-        self.__reflectedField = None
-        self.__transmittedField = None
-        self.__transflectedField = None
-        self.__previousLayer = None
+        if indexOfRefraction != None:
+            self.setIndexOfRefraction(indexOfRefraction)
+        else:
+            self.__indexOfRefraction = None
+            self.__intrinsicImpedance = None
+            self.__permittivity = None
+        
+        if centerWaveLength != None:
+            self.__computeThickness(centerWaveLength)
+        else:
+            self.__thickness = None
+        
+        if previousLayer != None:
+            self.setPreviousLayer(previousLayer)
+        else:
+            self.__reflectionCoefficient = None
+            self.__transmissionCoefficient = None
+            self.__previousLayer = None
+        self.__boundaryMatrix = None
+        self.__propagationMatrix = None
 
     #-------------------------------------------Getters and Setters-------------------------------------------#
 
@@ -42,7 +53,10 @@ class Layer:
         return self.__propagationWavelength
 
     def setPropagationWavelength(self, value: float) -> None:
-        self.__propagationWavelength = value
+        self.__propagationWavelength = value/self.getIndexOfRefraction()
+
+    def __computeThickness(self, value:float) -> None:
+        self.__setThickness(1/4*value) # Takes in the centerwavelength and divides the value by for and sets it as its thickness
 
     def getIndexOfRefraction(self) -> float:
         return self.__indexOfRefraction
@@ -61,7 +75,7 @@ class Layer:
     def getThickness(self) -> float:
         return self.__thickness
 
-    def setThickness(self, value: float) -> None:
+    def __setThickness(self, value: float) -> None:
         self.__thickness = value
 
     def getReflectionCoefficient(self) -> float:
@@ -76,36 +90,25 @@ class Layer:
     def __setTransmissionCoefficient(self, value: float) -> None:
         self.__transmissionCoefficient = value
 
-    def getIncidentField(self) -> float:
-        return self.__incidentField
-
-    def setIncidentElectricField(self, value: float) -> None:
-        self.__incidentField = value
-
-    def getReflectedField(self) -> float:
-        return self.__reflectedField
-
-    def setReflectedField(self, value: float) -> None:
-        self.__reflectedField = value
-
-    def getTransmittedField(self) -> float:
-        return self.__transmittedField
-
-    def setTransmittedField(self, value: float) -> None:
-        self.__transmittedField = value
-
-    def getTransflectedField(self) -> float:
-        return self.__transflectedField
-
-    def setTransflectedField(self, value: float) -> None:
-        self.__transflectedField = value
-
     def getPreviousLayer(self):
         return self.__previousLayer
+    
+    def getBoundaryMatrix(self) -> float:
+        return self.__boundaryMatrix
+
+    def __setBoundaryMatrix(self, value: float) -> None:
+        self.__boundaryMatrix = value
+
+    def getPropagationMatrix(self) -> float:
+        return self.__propagationMatrix
+
+    def __setPropagationMatrix(self, value: float) -> None:
+        self.__propagationMatrix = value
 
     def setPreviousLayer(self, value):
         self.__previousLayer = value
-        self.setPropagationWavelength(self.getPreviousLayer().getPropagationWavelength() / self.getIndexOfRefraction())
+        self.setPropagationWavelength(self.getPreviousLayer().getPropagationWavelength()*
+            self.getPreviousLayer().getIndexOfRefraction() / self.getIndexOfRefraction())
         self.__setReflectionCoefficient(
             (self.getPreviousLayer().getIntrinsicImpedance() - self.getIntrinsicImpedance()) /
             (self.getPreviousLayer().getIntrinsicImpedance() + self.getIntrinsicImpedance())
@@ -115,15 +118,53 @@ class Layer:
             (self.getPreviousLayer().getIntrinsicImpedance() + self.getIntrinsicImpedance())
         )
     
+    def computeBoundaryMatrix(self):
+        try:
+            if self.getReflectionCoefficient() == None:
+                raise ValueError("Reflection Coefficient was not initialized")
+
+            if self.getTransmissionCoefficient() == None:
+                raise ValueError("Transmission Coefficient was not initialized")
+        except ValueError as e:
+            raise e
+        else:
+            self.__setBoundaryMatrix(1/(self.getTransmissionCoefficient())*
+            (np.matrix([[1, self.getReflectionCoefficient()], [self.getReflectionCoefficient(), 1]], dtype='complex_')))
+
+    def computePropagationMatrix(self):
+        try:
+            if self.getPropagationWavelength() == None:
+                raise ValueError("Wavelength was not initialized")
+
+        except ValueError as e:
+            raise e
+        else:
+            phaseThickness = 2*pi*self.getIndexOfRefraction()*self.getThickness()/self.getPropagationWavelength()
+            self.__setPropagationMatrix(
+                np.array([[math.e**(1j*phaseThickness), 0] , [0, math.e**(-1j*phaseThickness)]], dtype='complex_')
+            )
+            
+            
     #-------------------------------------------Computations-------------------------------------------#
 
 
 if __name__ == "__main__":
-    layer1 = Layer()
-    layer1.setIndexOfRefraction(1)
+    layer1 = Layer(1, 650*math.pow(10, -9), None)
     layer1.setPropagationWavelength(650*math.pow(10, -9))
 
-    layer2 = Layer()
-    layer2.setIndexOfRefraction(3.5)
-    layer2.setPreviousLayer(layer1)
+    layer2 = Layer(1, 650*math.pow(10, -9), layer1)
+    layer2.computeBoundaryMatrix()
+    layer2.computePropagationMatrix()
+
+    layer3 = Layer(3.5, 650*math.pow(10, -9), layer2)
+    layer3.computeBoundaryMatrix()
+
+    T = reduce(np.dot, [layer2.getBoundaryMatrix(), layer2.getPropagationMatrix(), layer3.getBoundaryMatrix()]) # Applies the matrix multiplication for 2 layers and a boundary
+
+    reflectionCoefficient = T[1,0]/T[0,0]
+    transmissionCoefficient = 1/T[0,0]
+
+    reflectivity = math.pow(np.abs(reflectionCoefficient), 2)
+    transmittivity = math.pow(np.abs(transmissionCoefficient), 2)*(1/3.5)
+
     pass

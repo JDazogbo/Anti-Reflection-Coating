@@ -1,6 +1,7 @@
 import numpy as np
 from functools import reduce
 from scipy.constants import pi, c, mu_0, epsilon_0
+from scipy import integrate
 import math
 from Layer import Layer
 import matplotlib.pyplot as plt
@@ -39,6 +40,31 @@ def reflecticityWavelengthCalculator(wavelengths, centerWaveLength, indexOfRefra
         reflectivities.append(reflectivity*100)
     return reflectivities
 
+def reflecticitySingleWavelengthCalculator(wavelength):
+    layers = []
+    for i in range(0, len(indexOfRefractions)):
+        if i == 0:
+            layers.append(Layer(indexOfRefractions[i], centerWaveLength, None))
+            layers[i].setPropagationWavelength(wavelength*math.pow(10, -9))
+        else:
+            layers.append(Layer(indexOfRefractions[i], centerWaveLength, layers[i-1]))
+            layers[i].computeBoundaryMatrix()
+            layers[i].computePropagationMatrix()
+    liste = []
+    for i in range(1, len(layers)-1):
+        liste.append(layers[i].getBoundaryMatrix())
+        liste.append(layers[i].getPropagationMatrix())
+    liste.append(layers[len(layers)-1].getBoundaryMatrix())
+    T = reduce(np.dot, liste)
+    
+    reflectionCoefficient = T[1, 0] / T[0, 0]
+
+    return math.pow(np.abs(reflectionCoefficient), 2)
+    
+
+def irradianceCalculator(wavelength):
+    return (6.16*math.pow(10, 15))/(math.pow(wavelength, 5)*(math.exp(2484/wavelength)-1))
+
 
 if __name__ =="__main__":
     
@@ -59,9 +85,12 @@ if __name__ =="__main__":
                 reflectivities = reflecticityWavelengthCalculator(wavelengths, centerWaveLength, indexOfRefractions)
 
                 plt.plot(wavelengths, reflectivities)
-                plt.title("Reflecticity as a function of Wavelength")
+                
                 plt.xlabel("Wavelenegth (in nanometers)")
                 plt.ylabel("Reflecticity (in Percentage)")
+
+                power = integrate.quad(lambda x: irradianceCalculator(x)*(1-reflecticitySingleWavelengthCalculator(x)), wavelengths[0], wavelengths[len(wavelengths)-1])
+                plt.title("Reflecticity as a function of Wavelength\nPower Production: {power:.2f} ± {uncertainty:.2f}".format(power = power[0], uncertainty = power[1]))
                 plt.show()
                 break
             elif useCase ==2:

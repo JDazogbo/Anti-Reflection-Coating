@@ -40,7 +40,7 @@ def reflecticityWavelengthCalculator(wavelengths, centerWaveLength, indexOfRefra
         reflectivities.append(reflectivity*100)
     return reflectivities
 
-def reflecticitySingleWavelengthCalculator(wavelength):
+def reflecticitySingleWavelengthCalculator(wavelength, indexOfRefractions):
     layers = []
     for i in range(0, len(indexOfRefractions)):
         if i == 0:
@@ -70,7 +70,11 @@ if __name__ =="__main__":
     
     while True:
         try:
-            useCase = prompt('''Select the corresponding option to the use case of this tool:\n   1) Graphing Tool\n   2) Reflectivity/Transmittivity Calculator\nOption''', "Value is not an Integer", int)
+            useCase = prompt('''Select the corresponding option to the use case of this tool:\n   
+1) Graphing Tool (Part 2)\n   
+2) Reflectivity/Transmittivity Calculator (Part 1)\n
+3) Triple Layer Power Calculator (Part 4)\n
+Option''', "Value is not an Integer", int)
             if useCase == 1:
                 layerNumber = prompt("Input the number of layers", "Value is not an Integer", int)
                 indexOfRefractions = []
@@ -89,7 +93,7 @@ if __name__ =="__main__":
                 plt.xlabel("Wavelenegth (in nanometers)")
                 plt.ylabel("Reflecticity (in Percentage)")
 
-                power = integrate.quad(lambda x: irradianceCalculator(x)*(1-reflecticitySingleWavelengthCalculator(x)), wavelengths[0], wavelengths[len(wavelengths)-1])
+                power = integrate.quad(lambda x: irradianceCalculator(x)*(1-reflecticitySingleWavelengthCalculator(x, indexOfRefractions)), wavelengths[0], wavelengths[len(wavelengths)-1])
                 plt.title("Reflecticity as a function of Wavelength\nPower Production: {power:.2f} ± {uncertainty:.2f}".format(power = power[0], uncertainty = power[1]))
                 plt.show()
                 break
@@ -126,6 +130,29 @@ if __name__ =="__main__":
                 
                 print("Reflectivity: {reflectivity:.2f}%\nTransmittivity: {transmittivity:.2f}%\n\nTransfer Matrix: {TMM}".format(reflectivity = 100*reflectivity, transmittivity = 100*transmittivity, TMM = T))
                 break
+            elif useCase ==3:
+                indexOfRefractions = [1, 1.4, None, 3.15, 3.5]
+
+                centerWaveLength = 650
+                lowerWavelength = 200
+                higherWavelength = 2200
+                wavelengths = range(lowerWavelength, higherWavelength, 1)
+
+                powers = []
+
+                for i in np.arange(1.4, 3, 0.05):
+                    indexOfRefractions[2] = i
+                    power = integrate.quad(lambda x: irradianceCalculator(x)*(1-reflecticitySingleWavelengthCalculator(x, indexOfRefractions)), wavelengths[0], wavelengths[len(wavelengths)-1], limit=150)
+                    powers.append(power[0])
+                
+                plt.plot(np.arange(1.4, 3, 0.05), powers)
+                
+                plt.xlabel("Choice of Index of Refraction for Layer 2")
+                plt.ylabel("Received Power")
+
+                plt.title("Power received as a function of Index of Refractions of Layers 2")
+                plt.show()
+
             else:
                 raise ValueError("Value is not in the selectable options")
         except ValueError as e:

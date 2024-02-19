@@ -11,13 +11,13 @@ This repository contains the Python implementation of the Transfer Matrix Method
 
 ## Code Structure
 
-The code is organized into two main files: [main.py](main.py) and [Layer.py](Layer.py). The `main.py` file houses the core functionalities, including the computation of reflectivity, transmittivity, and the optimization of layer configurations for specific wavelengths. The `Layer.py` file defines a versatile `Layer` class, encapsulating essential parameters for each layer, ensuring scalability for different configurations.
+The code is organized into two main files: [ApplicationInterface.py](ApplicationInterface.py) and [Layer.py](Layer.py). The `ApplicationInterface.py` file houses the core functionalities, including the computation of reflectivity, transmittivity, and the optimization of layer configurations for specific wavelengths. The `Layer.py` file defines a versatile `Layer` class, encapsulating essential parameters for each layer, ensuring scalability for different configurations.
 
 ## Usage
 
 To explore the anti-reflective coating design, follow these steps:
 
-1. Run [main.py](main.py) to execute the code.
+1. Run [ApplicationInterface.py](ApplicationInterface.py) to execute the code.
 2. Choose the use case based on the provided options:
    - **Graphing Tool:** Visualize reflectivity as a function of wavelength.
    - **Reflectivity/Transmittivity Calculator:** Compute reflectivity and transmittivity for a given layer configuration.
